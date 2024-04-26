@@ -1,31 +1,3 @@
-# https://youtu.be/jvZm8REF2KY
-"""
-Explanation of using RGB masks: https://youtu.be/sGAwx4GMe4E
-
-https://www.kaggle.com/humansintheloop/semantic-segmentation-of-aerial-imagery
-
-The dataset consists of aerial imagery of Dubai obtained by MBRSC satellites and annotated with pixel-wise semantic segmentation in 6 classes. The total volume of the dataset is 72 images grouped into 6 larger tiles. The classes are:
-
-Building: #3C1098
-Land (unpaved area): #8429F6
-Road: #6EC1E4
-Vegetation: #FEDD3A
-Water: #E2A929
-Unlabeled: #9B9B9B
-
-Use patchify....
-Tile 1: 797 x 644 --> 768 x 512 --> 6
-Tile 2: 509 x 544 --> 512 x 256 --> 2
-Tile 3: 682 x 658 --> 512 x 512  --> 4
-Tile 4: 1099 x 846 --> 1024 x 768 --> 12
-Tile 5: 1126 x 1058 --> 1024 x 1024 --> 16
-Tile 6: 859 x 838 --> 768 x 768 --> 9
-Tile 7: 1817 x 2061 --> 1792 x 2048 --> 56
-Tile 8: 2149 x 1479 --> 1280 x 2048 --> 40
-Total 9 images in each folder * (145 patches) = 1305
-Total 1305 patches of size 256x256
-
-"""
 
 import os
 import cv2
@@ -43,12 +15,6 @@ scaler = MinMaxScaler()
 root_directory = 'Semantic segmentation dataset/'
 
 patch_size = 256
-
-#Read images from repsective 'images' subdirectory
-#As all images are of ddifferent size we have 2 options, either resize or crop
-#But, some images are too large and some small. Resizing will change the size of real objects.
-#Therefore, we will crop them to a nearest size divisible by 256 and then 
-#divide all images into patches of 256x256x3. 
 image_dataset = []  
 for path, subdirs, files in os.walk(root_directory):
     #print(path)  
@@ -120,7 +86,6 @@ for path, subdirs, files in os.walk(root_directory):
 image_dataset = np.array(image_dataset)
 mask_dataset =  np.array(mask_dataset)
 
-#Sanity check, view few mages
 import random
 import numpy as np
 image_number = random.randint(0, len(image_dataset))
@@ -207,7 +172,6 @@ labels = np.expand_dims(labels, axis=3)
 
 print("Unique labels in label dataset are: ", np.unique(labels))
 
-#Another Sanity check, view few mages
 import random
 import numpy as np
 image_number = random.randint(0, len(image_dataset))
@@ -228,17 +192,6 @@ labels_cat = to_categorical(labels, num_classes=n_classes)
 
 from sklearn.model_selection import train_test_split
 X_train, X_test, y_train, y_test = train_test_split(image_dataset, labels_cat, test_size = 0.20, random_state = 42)
-
-
-#######################################
-#Parameters for model
-# Segmentation models losses can be combined together by '+' and scaled by integer or float factor
-# set class weights for dice_loss
-# from sklearn.utils.class_weight import compute_class_weight
-
-# weights = compute_class_weight('balanced', np.unique(np.ravel(labels,order='C')), 
-#                               np.ravel(labels,order='C'))
-# print(weights)
 
 weights = [0.1666, 0.1666, 0.1666, 0.1666, 0.1666, 0.1666]
 dice_loss = sm.losses.DiceLoss(class_weights=weights) 
@@ -270,25 +223,6 @@ history1 = model.fit(X_train, y_train,
                     validation_data=(X_test, y_test), 
                     shuffle=False)
 
-#Minmaxscaler
-#With weights...[0.1666, 0.1666, 0.1666, 0.1666, 0.1666, 0.1666]   in Dice loss
-#With focal loss only, after 100 epochs val jacard is: 0.62  (Mean IoU: 0.6)            
-#With dice loss only, after 100 epochs val jacard is: 0.74 (Reached 0.7 in 40 epochs)
-#With dice + 5 focal, after 100 epochs val jacard is: 0.711 (Mean IoU: 0.611)
-##With dice + 1 focal, after 100 epochs val jacard is: 0.75 (Mean IoU: 0.62)
-#Using categorical crossentropy as loss: 0.71
-
-##With calculated weights in Dice loss.    
-#With dice loss only, after 100 epochs val jacard is: 0.672 (0.52 iou)
-
-
-##Standardscaler 
-#Using categorical crossentropy as loss: 0.677
-
-#model.save('models/satellite_standard_unet_100epochs_7May2021.hdf5')
-############################################################
-#TRY ANOTHE MODEL - WITH PRETRINED WEIGHTS
-#Resnet backbone
 BACKBONE = 'resnet34'
 preprocess_input = sm.get_preprocessing(BACKBONE)
 
@@ -313,20 +247,6 @@ history2=model_resnet_backbone.fit(X_train_prepr,
           verbose=1,
           validation_data=(X_test_prepr, y_test))
 
-#Minmaxscaler
-#With weights...[0.1666, 0.1666, 0.1666, 0.1666, 0.1666, 0.1666]   in Dice loss
-#With focal loss only, after 100 epochs val jacard is:               
-#With dice + 5 focal, after 100 epochs val jacard is: 0.73 (reached 0.71 in 40 epochs. So faster training but not better result. )
-##With dice + 1 focal, after 100 epochs val jacard is:   
-    ##Using categorical crossentropy as loss: 0.755 (100 epochs)
-#With calc. weights supplied to model.fit: 
- 
-#Standard scaler
-#Using categorical crossentropy as loss: 0.74
-
-
-###########################################################
-#plot the training and validation accuracy and loss at each epoch
 history = history1
 loss = history.history['loss']
 val_loss = history.history['val_loss']
@@ -395,4 +315,3 @@ plt.title('Prediction on test image')
 plt.imshow(predicted_img)
 plt.show()
 
-#####################################################################
